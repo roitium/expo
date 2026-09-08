@@ -10,12 +10,12 @@ import {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { wrapNativeEvent, type PagerViewProps } from './types';
 import { worklets } from '../../State';
 import { HorizontalPager, type HorizontalPagerHandle } from '../../jetpack-compose/HorizontalPager';
 import { Host } from '../../jetpack-compose/Host';
 import { RNHostView } from '../../jetpack-compose/RNHostView';
 import { type BuiltinShape, Shapes, clip, fillMaxSize } from '../../jetpack-compose/modifiers';
+import { wrapNativeEvent, type PagerViewProps } from './types';
 
 /**
  * Drop-in replacement for `react-native-pager-view` on Android.
@@ -77,13 +77,7 @@ export function PagerView(props: PagerViewProps) {
   const pages = Children.toArray(children)
     .filter((child): child is ReactElement => isValidElement(child))
     .map((child, index) => (
-      <RNHostView
-        key={child.key ?? String(index)}
-        // Overlap pages at one origin so each page's RN shadow position matches
-        // where Compose draws it; otherwise `measure()`-based hit-testing
-        // (e.g. `Pressable`) misfires on pages after the first (#46386).
-        style={StyleSheet.absoluteFill}
-        modifiers={[fillMaxSize()]}>
+      <RNHostView key={child.key ?? String(index)} modifiers={[fillMaxSize()]}>
         <View style={styles.page} pointerEvents={index === settledPage ? 'auto' : 'none'}>
           {child}
         </View>

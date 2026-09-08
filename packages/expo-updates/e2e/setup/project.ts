@@ -165,9 +165,6 @@ async function copyCommonFixturesToProject(
   // remove project files archive
   await fs.rm(projectFilesTarballPath);
 
-  // copy .prettierrc
-  await fs.copyFile(path.resolve(repoRoot, '.prettierrc'), path.join(projectRoot, '.prettierrc'));
-
   if (!isTV) {
     // Copy react-native patch
     await fs.mkdir(path.join(projectRoot, 'patches'));
@@ -228,6 +225,38 @@ async function copyCommonFixturesToProject(
     await fs.rm(podFilePath);
     await fs.writeFile(podFilePath, podFileText2, { encoding: 'utf-8' });
   }
+
+  // react-native 0.87's precompiled React-Core (RCT_USE_PREBUILT_RNCORE=1) ships
+  // framework headers that include non-modular headers (yoga, RCTDeprecation,
+  // react/runtime), which fails module precompilation with
+  // -Werror,-Wnon-modular-include-in-framework-module in pods that import React
+  // as a framework module. Allow non-modular includes across the pods project.
+  const nonModularPodfilePath = path.resolve(projectRoot, 'ios', 'Podfile');
+  const nonModularPodfileText = await readFile(nonModularPodfilePath, { encoding: 'utf-8' });
+  const postInstallAnchor = 'post_install do |installer|';
+  if (!nonModularPodfileText.includes(postInstallAnchor)) {
+    throw new Error(`Could not find a post_install block to patch in ${nonModularPodfilePath}`);
+  }
+  await fs.writeFile(
+    nonModularPodfilePath,
+    nonModularPodfileText.replace(
+      postInstallAnchor,
+      [
+        postInstallAnchor,
+        '    allow_non_modular = lambda do |target|',
+        '      target.build_configurations.each do |config|',
+        "        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'",
+        '      end',
+        '    end',
+        '    installer.pods_project.targets.each { |target| allow_non_modular.call(target) }',
+        '    installer.aggregate_targets.map(&:user_project).uniq.each do |project|',
+        '      project.targets.each { |target| allow_non_modular.call(target) }',
+        '      project.save',
+        '    end',
+      ].join('\n')
+    ),
+    { encoding: 'utf-8' }
+  );
 
   // Modify specific files for TV
   if (isTV) {
@@ -358,7 +387,6 @@ async function preparePackageJson(
         'resolve-from': '^5.0.0',
         'structured-headers': '^2.0.2',
         nullthrows: '^1.1.1',
-        prettier: '^2.8.1',
         'patch-package': '^8.0.0',
         'ts-node': '~10.9.2',
       }

@@ -3,12 +3,13 @@ import {
   createModifierWithEventListener,
   type ModifierConfig,
 } from './createModifier';
+import { resolveShapeStyle, type ShapeStyle } from './shapeStyle';
 
 /**
  * Presentation detent type for controlling sheet heights.
  * - `'medium'`: System medium height (approximately half screen)
  * - `'large'`: System large height (full screen)
- * - `{ fraction: number }`: Fraction of screen height (0-1, for example, 0.4 equals to 40% of screen)
+ * - `{ fraction: number }`: Fraction of screen height (0-1, for example, 0.4 equals 40% of screen)
  * - `{ height: number }`: Fixed height in points
  */
 export type PresentationDetent = 'medium' | 'large' | { fraction: number } | { height: number };
@@ -88,13 +89,16 @@ export const presentationBackgroundInteraction = (
  * Sets the background of a sheet presentation. Paints the entire sheet chrome
  * including the drag-indicator zone and home-indicator safe-area inset, which
  * a regular `background()` modifier cannot reach.
- * @param color - The background color (hex string). For example, `#FF0000`.
+ *
+ * > **Note:** iOS 26 renders a material as a flat color rather than a translucent blur.
+ * @param style - Any [`ShapeStyle`](#shapestyle): a color, a hierarchical style, a material, or a gradient.
  * @platform ios 16.4+
+ * @platform tvos 16.4+
  * @see Official [SwiftUI
 documentation](https://developer.apple.com/documentation/swiftui/view/presentationbackground(_:)).
  */
-export const presentationBackground = (color: string) =>
-  createModifier('presentationBackground', { color });
+export const presentationBackground = (style: ShapeStyle) =>
+  createModifier('presentationBackground', { style: resolveShapeStyle(style) });
 
 /**
  * Disables interactive dismissal of a sheet.

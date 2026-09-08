@@ -1,5 +1,6 @@
 import type { WebSocketServer } from 'ws';
 
+import { isPathInside, maybeRealpathSync } from '../../utils/dir';
 import type { DevToolsPluginInfo } from './DevToolsPlugin.schema';
 import { PluginSchema } from './DevToolsPlugin.schema';
 import { DevToolsPluginCliExtensionExecutor } from './DevToolsPluginCliExtensionExecutor';
@@ -9,7 +10,6 @@ import {
   loadRequestHandlerAsync,
   loadWebSocketServerAsync,
 } from './DevToolsPluginServerHelpers';
-import { isPathInside, maybeRealpathSync } from '../../utils/dir';
 
 export type { DevToolsPluginRequestHandler } from './DevToolsPluginServerHelpers';
 
@@ -18,8 +18,7 @@ export type { DevToolsPluginRequestHandler } from './DevToolsPluginServerHelpers
  *
  * Responsibilities:
  * - Validates plugin configuration against schema
- * - Provides access to plugin metadata (name, description
- * , endpoints)
+ * - Provides access to plugin metadata (name, description, endpoints)
  * - Manages CLI command execution via DevToolsPluginExecutor
  * - Lazily initializes executor when needed
  * - Constructs web endpoint URLs based on server configuration

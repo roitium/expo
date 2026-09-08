@@ -69,7 +69,7 @@ const Prerequisites: ComponentType<PrerequisitesProps> = withHeadingManager(
       <details
         id={heading.current.slug}
         className={mergeClasses(
-          'mb-3 scroll-m-4 rounded-md border border-default p-0',
+          'mb-3 scroll-m-4 rounded-3xl border border-default p-0',
           '[[open]]:shadow-xs',
           '[h4+&]:mt-3 [li>&]:mt-3 [p+&]:mt-3',
           className
@@ -82,13 +82,14 @@ const Prerequisites: ComponentType<PrerequisitesProps> = withHeadingManager(
         data-md="prerequisites">
         <summary
           className={mergeClasses(
-            'group m-0 flex cursor-pointer items-center justify-between rounded-md p-1.5 py-3 pr-4',
+            'group m-0 flex cursor-pointer items-center justify-between rounded-3xl p-1.5 py-3 pr-4',
             '[details[open]>&]:rounded-b-none',
             'hocus:bg-subtle'
           )}>
           <div className="flex items-center">
             <div className="mt-1.25 mr-2 ml-1.5 self-baseline">
               <TriangleDownIcon
+                aria-hidden="true"
                 className={mergeClasses(
                   'icon-sm text-icon-default',
                   '-rotate-90 transition-transform duration-200',
@@ -97,7 +98,7 @@ const Prerequisites: ComponentType<PrerequisitesProps> = withHeadingManager(
               />
             </div>
             <div className="flex items-center gap-2">
-              <ListIcon className={mergeClasses('icon-sm text-icon-default')} />
+              <ListIcon aria-hidden="true" className={mergeClasses('icon-sm text-icon-default')} />
               <p
                 className={mergeClasses(
                   'relative inline scroll-m-5',

@@ -1,5 +1,12 @@
+import type {
+  AssetInfo,
+  AssetUriOptions,
+  Location,
+  Shape,
+  MediaSubtype,
+  MediaType,
+} from '../../types';
 import type { NativeAlbumClass } from './NativeAlbumClass.types';
-import type { AssetInfo, Location, Shape, MediaSubtype, MediaType } from '../../types';
 
 export declare class NativeAssetClass {
   constructor(id: string);
@@ -15,7 +22,7 @@ export declare class NativeAssetClass {
   getOrientation(): Promise<number | null>;
   getModificationTime(): Promise<number | null>;
   getShape(): Promise<Shape | null>;
-  getUri(): Promise<string>;
+  getUri(options?: AssetUriOptions): Promise<string>;
   getWidth(): Promise<number>;
   getInfo(): Promise<AssetInfo>;
   getAlbums(): Promise<NativeAlbumClass[]>;

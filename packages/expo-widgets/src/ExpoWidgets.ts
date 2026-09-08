@@ -1,4 +1,4 @@
-import type { EventSubscription } from 'expo-modules-core';
+import type { EventSubscription } from 'expo';
 
 import type {
   ExpoTimelineEntry,
@@ -6,6 +6,7 @@ import type {
   NativeLiveActivity,
   NativeLiveActivityFactory,
   NativeWidgetObject,
+  WidgetConfigurationEnum,
 } from './Widgets.types';
 
 const noopSubscription: EventSubscription = { remove() {} };
@@ -19,9 +20,16 @@ class WidgetStub {
   async getTimeline(): Promise<ExpoTimelineEntry[]> {
     return [];
   }
+  setConfigurationParameterEnum(
+    _parameterName: string,
+    _options?: WidgetConfigurationEnum[]
+  ): void {}
 }
 
 class LiveActivityStub {
+  getId(): string {
+    return '';
+  }
   async update(_props?: string): Promise<void> {}
   async end(
     _dismissalPolicy?: string,

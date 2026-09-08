@@ -23,7 +23,7 @@ export const IssuesLink = ({ title, repositoryUrl }: { title: string; repository
         repositoryUrl ? `${repositoryUrl}/issues` : `https://github.com/expo/expo/labels/${title}`
       }
       className={LINK_CLASSES}>
-      <GithubIcon className={ICON_CLASSES} />
+      <GithubIcon aria-hidden="true" className={ICON_CLASSES} />
       <CALLOUT theme="secondary">View open bug reports for {title}</CALLOUT>
     </A>
   </LI>
@@ -34,7 +34,7 @@ export const ForumsLink = ({ isAPIPage, title }: { isAPIPage: boolean; title: st
   return isAPIPage ? (
     <LI>
       <A isStyled openInNewTab href="https://chat.expo.dev/" className={LINK_CLASSES}>
-        <DiscordIcon className={ICON_CLASSES} />
+        <DiscordIcon aria-hidden="true" className={ICON_CLASSES} />
         <CALLOUT theme="secondary">Ask a question on the forums about {title}</CALLOUT>
       </A>
     </LI>
@@ -46,7 +46,7 @@ export const ForumsLink = ({ isAPIPage, title }: { isAPIPage: boolean; title: st
         href="https://chat.expo.dev/"
         className={LINK_CLASSES}
         shouldLeakReferrer>
-        <DiscordIcon className={ICON_CLASSES} />
+        <DiscordIcon aria-hidden="true" className={ICON_CLASSES} />
         <CALLOUT theme="secondary">{intl.formatMessage({ id: 'footerAskOnForums' })}</CALLOUT>
       </A>
     </LI>
@@ -58,21 +58,16 @@ export const EditPageLink = ({ pathname }: { pathname: string }) => {
   return (
     <LI>
       <A isStyled openInNewTab href={githubUrl(pathname)} className={LINK_CLASSES}>
-        <Edit05Icon className={ICON_CLASSES} />
+        <Edit05Icon aria-hidden="true" className={ICON_CLASSES} />
         <CALLOUT theme="secondary">{intl.formatMessage({ id: 'footerEditPage' })}</CALLOUT>
       </A>
     </LI>
   );
 };
 
-type LlmsTxtLinkProps = {
-  fullVersionHref: string;
-  fullVersionLabel: string;
-};
-
-export const LlmsTxtLink = ({ fullVersionHref, fullVersionLabel }: LlmsTxtLinkProps) => (
+export const LlmsTxtLink = () => (
   <LI className="flex items-center">
-    <File02Icon className={ICON_CLASSES} />
+    <File02Icon aria-hidden="true" className={ICON_CLASSES} />
     <CALLOUT theme="secondary" tag="span">
       <FormattedMessage
         id="footerLlmsView"
@@ -82,12 +77,6 @@ export const LlmsTxtLink = ({ fullVersionHref, fullVersionLabel }: LlmsTxtLinkPr
               {chunks}
             </A>
           ),
-          fullLink: (chunks: ReactNode) => (
-            <A openInNewTab href={fullVersionHref} className="focus-visible:outline-offset-4">
-              {chunks}
-            </A>
-          ),
-          fullName: fullVersionLabel,
         }}
       />
     </CALLOUT>
@@ -101,7 +90,7 @@ export const ShareFeedbackLink = ({ pathname }: { pathname?: string }) => {
       <Dialog.Root>
         <Dialog.Trigger className="h-5.5 focus-visible:outline-offset-4">
           <A isStyled className={LINK_CLASSES}>
-            <MessageTextSquare02Icon className={ICON_CLASSES} />
+            <MessageTextSquare02Icon aria-hidden="true" className={ICON_CLASSES} />
             <CALLOUT theme="secondary">{intl.formatMessage({ id: 'footerShareFeedback' })}</CALLOUT>
           </A>
         </Dialog.Trigger>

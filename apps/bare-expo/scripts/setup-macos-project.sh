@@ -32,6 +32,13 @@ node -e "
   const files = fs.readdirSync(patchDir).filter(f => f.endsWith('.patch'));
   let yaml = fs.readFileSync(workspaceFile, 'utf8');
 
+  // 'react-native-screens@4.26.0' -> 'react-native-screens', '@scope/pkg@1.2.3' -> '@scope/pkg'
+  const packageNameOf = (key) => {
+    const unquoted = key.trim().replace(/^['\"]|['\"]\$/g, '');
+    const versionAt = unquoted.lastIndexOf('@');
+    return versionAt > 0 ? unquoted.slice(0, versionAt) : unquoted;
+  };
+
   for (const file of files) {
     if (yaml.includes('patches/' + file)) continue;
 
@@ -47,9 +54,12 @@ node -e "
     const quotedKey = pkg.includes('/') || pkg.includes('@') ? \"'\" + pkg + \"'\" : pkg;
     const entry = '  ' + quotedKey + ': patches/' + file;
 
-    // Insert after the last entry in patchedDependencies
+    // Insert after the last entry in patchedDependencies, or replace an entry that already patches
+    // this package. pnpm applies at most one patch per package and fails with ERR_PNPM_UNUSED_PATCH
+    // when a second, version-pinned entry for the same package is left behind.
     const lines = yaml.split('\n');
     let insertIdx = -1;
+    let replaceIdx = -1;
     let inSection = false;
     for (let i = 0; i < lines.length; i++) {
       if (lines[i] === 'patchedDependencies:') {
@@ -59,13 +69,19 @@ node -e "
       if (inSection) {
         if (lines[i].startsWith('  ') && lines[i].trim()) {
           insertIdx = i + 1;
+          if (packageNameOf(lines[i].split(':')[0]) === pkg) {
+            replaceIdx = i;
+          }
         } else if (lines[i].trim() && !lines[i].startsWith('  ')) {
           break;
         }
       }
     }
 
-    if (insertIdx !== -1) {
+    if (replaceIdx !== -1) {
+      lines.splice(replaceIdx, 1, entry);
+      yaml = lines.join('\n');
+    } else if (insertIdx !== -1) {
       lines.splice(insertIdx, 0, entry);
       yaml = lines.join('\n');
     }
@@ -80,12 +96,16 @@ if [[ "$RN_MACOS_VERSION" != "null" ]]; then
 else
     RN_MINOR_VERSION=$(jq -r '.dependencies["react-native"] | capture("^(?<major>\\d+)\\.(?<minor>\\d+)") | "\( .major ).\( .minor )"' package.json)
     echo " ⚠️  Attempting to install react-native-macos@$RN_MINOR_VERSION..."
-    if ! pnpm add "react-native-macos@$RN_MINOR_VERSION" --silent; then
+    # These versions are explicitly chosen, so opt out of the workspace minimumReleaseAge
+    # policy — it would reject any react-native-macos release younger than 24 hours.
+    if ! pnpm add "react-native-macos@$RN_MINOR_VERSION" --silent --config.minimum-release-age=0; then
         echo "⚠️  Failed to install react-native-macos@$RN_MINOR_VERSION, falling back to latest version"
         # Manually extract the last react-native-macos version (highest) from npm because we can't rely on the @latest tag
         latest_version=$(npm view react-native-macos versions --json | jq -r '.[-1]')
-        pnpm add "react-native-macos@$latest_version"
-
+        if ! pnpm add "react-native-macos@$latest_version" --config.minimum-release-age=0; then
+            echo " ❌ Could not install react-native-macos@$latest_version; the macOS project cannot be set up without it. See the pnpm error above."
+            exit 1
+        fi
     fi
 fi
 

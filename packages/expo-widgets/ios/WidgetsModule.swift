@@ -79,6 +79,10 @@ public final class WidgetsModule: Module {
       Function("getTimeline") { (widget: WidgetObject) in
         try widget.getTimeline()
       }
+
+      Function("setConfigurationParameterEnum") { (widget: WidgetObject, parameterName: String, options: [WidgetConfigurationOptionRecord]?) in
+        widget.setConfigurationParameterEnum(parameterName: parameterName, options: options)
+      }
     }
 
     Class("LiveActivityFactory", LiveActivityFactory.self) {
@@ -96,6 +100,10 @@ public final class WidgetsModule: Module {
     }
 
     Class("LiveActivity", LiveActivity.self) {
+      Function("getId") { (instance: LiveActivity) in
+        instance.id
+      }
+
       AsyncFunction("update") { (instance: LiveActivity, props: String?, staleDate: Date?) in
         try await instance.update(props: props, staleDate: staleDate)
       }

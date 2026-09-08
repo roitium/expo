@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { RNHostViewProps } from './types';
 import { useUniversalLifecycle } from '../hooks';
+import type { RNHostViewProps } from './types';
 
 const styles = StyleSheet.create({
   fillParent: { width: '100%', height: '100%' },
@@ -20,12 +20,14 @@ export function RNHostView({
   hidden = false,
   testID,
   matchContents = false,
+  onLayout,
 }: RNHostViewProps) {
   useUniversalLifecycle(onAppear, onDisappear);
 
   return (
     <View
       testID={testID}
+      onLayout={onLayout}
       style={[
         matchContents ? styles.matchContents : styles.fillParent,
         style,

@@ -42,6 +42,10 @@ export type PrebuildCliOptions = {
   verbose: boolean;
   concurrency?: number;
   bundleSharedDeps?: boolean;
+  /** Used only by `prebuild prune`: report what would be removed without deleting. */
+  dryRun?: boolean;
+  /** Used only by `prebuild prune`: also remove each package's bundled `prebuilds/`. */
+  bundled?: boolean;
 };
 
 // ---------------------------------------------------------------------------

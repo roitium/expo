@@ -16,6 +16,7 @@ export {
 } from './hooks';
 
 export { router, type ImperativeRouter } from './imperative-api';
+export { useIsNavigating as unstable_useIsNavigating } from './global-state/useIsNavigating';
 
 export { withLayoutContext } from './layouts/withLayoutContext';
 export { Navigator, Slot };
@@ -28,6 +29,7 @@ export { useSitemap, type SitemapType } from './views/useSitemap';
 export type { ErrorBoundaryProps } from './views/Try';
 export { ErrorBoundary } from './views/ErrorBoundary';
 export { SuspenseFallback, type SuspenseFallbackProps } from './views/SuspenseFallback';
+export { NavigationAwareActivity } from './views/NavigationAwareActivity';
 export type { ScreenProps } from './useScreens';
 
 // Platform
@@ -46,6 +48,8 @@ export { DarkTheme } from './react-navigation/native/theming/DarkTheme';
 export { DefaultTheme } from './react-navigation/native/theming/DefaultTheme';
 export { ThemeProvider } from './react-navigation/core/theming/ThemeProvider';
 export { useTheme } from './react-navigation/core/theming/useTheme';
+export { LocaleProvider, type LocaleProviderProps } from './LocaleProvider';
+export type { Theme } from './react-navigation/native/types';
 export { useRoutePath } from './react-navigation/native/useRoutePath';
 export { useScrollToTop } from './react-navigation/native/useScrollToTop';
 export { useRoute } from './react-navigation/core/useRoute';
@@ -73,12 +77,20 @@ export {
 export type {
   IntegrateWithRouterOptions,
   NavigatorContentProps,
+  StandardNavigatorDescriptor,
   StandardNavigatorEventMapBase,
   StandardUseNavigationBuilderOptions,
 } from './standard-navigation';
 
+export type { RouteSource } from './react-navigation/native';
+
 // Router factories for use with `unstable_createStandardRouterNavigator` / `unstable_integrateWithRouter`.
 export { StackRouter, TabRouter } from './react-navigation/routers';
+export { NativeStackView } from './react-navigation/native-stack';
+export type {
+  NativeStackDescriptorMap,
+  NativeStackViewState,
+} from './react-navigation/native-stack';
 export type {
   StackNavigationState,
   StackRouterOptions,
@@ -124,10 +136,13 @@ export type {
   NativeStackHeaderLeftProps,
   NativeStackHeaderProps,
   NativeStackHeaderRightProps,
+  NativeStackHeaderNativeProps,
+  NativeStackNativeProps,
   NativeStackNavigationEventMap,
   NativeStackNavigationOptions,
   NativeStackNavigationProp,
   NativeStackNavigatorProps,
   NativeStackOptionsArgs,
+  NativeStackScreenNativeProps,
   NativeStackScreenProps,
 } from './react-navigation/native-stack';

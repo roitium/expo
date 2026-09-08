@@ -1,4 +1,4 @@
-import type { EventSubscription } from 'expo-modules-core';
+import type { EventSubscription } from 'expo';
 import { Platform } from 'react-native';
 
 import ExpoWidgetsModule from './ExpoWidgets';
@@ -10,6 +10,7 @@ import type {
   NativeLiveActivityFactory,
   NativeWidgetObject,
   PushTokenEvent,
+  WidgetConfigurationEnum,
   WidgetEnvironment,
   WidgetTimelineEntry,
 } from './Widgets.types';
@@ -79,6 +80,17 @@ export class Widget<
       props: entry.props as PropsType,
     }));
   }
+
+  /**
+   * Replaces the runtime options for a dynamic enum configuration parameter.
+   * The app config values remain the fallback when no runtime options are set.
+   */
+  setConfigurationParameterEnum(
+    parameterName: keyof ConfigurationType & string,
+    options?: WidgetConfigurationEnum[]
+  ) {
+    this.nativeWidgetObject.setConfigurationParameterEnum(parameterName, options);
+  }
 }
 
 /**
@@ -89,6 +101,13 @@ export class LiveActivity<T extends object = object> {
   private nativeLiveActivity: NativeLiveActivity;
   constructor(nativeLiveActivity: NativeLiveActivity) {
     this.nativeLiveActivity = nativeLiveActivity;
+  }
+
+  /**
+   * Returns the stable ActivityKit identifier for this Live Activity.
+   */
+  getId(): string {
+    return this.nativeLiveActivity.getId();
   }
 
   /**

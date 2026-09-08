@@ -8,8 +8,17 @@ internal import SDWebImageSVGCoder
 public final class ImageModule: Module {
   lazy var prefetcher = SDWebImagePrefetcher.shared
 
+  // Whether JS subscribed to `imageLoaded`. Skips the per-image-load bridge hop when nothing is
+  // listening
+  private var hasImageLoadedListener = false
+
   public func definition() -> ModuleDefinition {
     Name("ExpoImage")
+
+    Events("imageLoaded")
+
+    OnStartObserving("imageLoaded") { self.hasImageLoadedListener = true }
+    OnStopObserving("imageLoaded") { self.hasImageLoadedListener = false }
 
     OnCreate {
       ImageModule.registerCoders()
@@ -93,6 +102,11 @@ public final class ImageModule: Module {
 
       Prop("accessibilityLabel") { (view, label: String?) in
         view.sdImageView.accessibilityLabel = label
+      }
+
+      Prop("accessibilityElementsHidden") { (view, hidden: Bool?) in
+        view.accessibilityElementsHidden = hidden ?? false
+        view.sdImageView.accessibilityElementsHidden = hidden ?? false
       }
 
       Prop("recyclingKey") { (view, key: String?) in
@@ -202,20 +216,24 @@ public final class ImageModule: Module {
 
     AsyncFunction("generateBlurhashAsync") { (source: Either<Image, URL>, numberOfComponents: CGSize, promise: Promise) in
       let parsedNumberOfComponents = (width: Int(numberOfComponents.width), height: Int(numberOfComponents.height))
-      generatePlaceholder(source: source) { (image: UIImage) in
+      generatePlaceholder(source: source, onFailure: {
+        promise.reject(BlurhashGenerationException())
+      }, generator: { (image: UIImage) in
         if let blurhashString = blurhash(fromImage: image, numberOfComponents: parsedNumberOfComponents) {
           promise.resolve(blurhashString)
         } else {
           promise.reject(BlurhashGenerationException())
         }
-      }
+      })
     }
 
     AsyncFunction("generateThumbhashAsync") { (source: Either<Image, URL>, promise: Promise) in
-      generatePlaceholder(source: source) { (image: UIImage) in
+      generatePlaceholder(source: source, onFailure: {
+        promise.reject(ThumbhashGenerationException())
+      }, generator: { (image: UIImage) in
         let blurhashString = thumbHash(fromImage: image)
         promise.resolve(blurhashString.base64EncodedString())
-      }
+      })
     }
 
     AsyncFunction("clearMemoryCache") { () -> Bool in
@@ -288,8 +306,15 @@ public final class ImageModule: Module {
       return Image(cachedImage)
     }
 
-    AsyncFunction("loadAsync") { (source: ImageSource, options: ImageLoadOptions?) -> Image? in
+    AsyncFunction("loadAsync") { [weak appContext = self.appContext] (source: ImageSource, options: ImageLoadOptions?) -> Image? in
       let image = try await ImageLoadTask(source, options: options ?? ImageLoadOptions()).load()
+      // Going through the `appContext` instead of capturing `self` keeps this `@Sendable async` closure from forcing 
+      // the whole module to be Sendable.
+      appContext?.moduleRegistry.getModule(implementing: ImageModule.self)?.emitImageLoaded(
+        url: source.uri?.absoluteString ?? "",
+        width: image.size.width * image.scale,
+        height: image.size.height * image.scale
+      )
       return Image(image)
     }
 
@@ -304,8 +329,20 @@ public final class ImageModule: Module {
     }
   }
 
+  func emitImageLoaded(url: String, width: CGFloat, height: CGFloat) {
+    guard hasImageLoadedListener, width > 0, height > 0, !url.isEmpty else {
+      return
+    }
+    emit(event: "imageLoaded", payload: [
+      "url": url,
+      "width": Double(width),
+      "height": Double(height)
+    ])
+  }
+
   func generatePlaceholder(
     source: Either<Image, URL>,
+    onFailure: @escaping () -> Void,
     generator: @escaping (UIImage) -> Void
   ) {
     if let image: Image = source.get() {
@@ -314,11 +351,15 @@ public final class ImageModule: Module {
       let downloader = SDWebImageDownloader()
       downloader.downloadImage(with: url, progress: nil, completed: { image, _, _, _ in
         DispatchQueue.global().async {
-          if let downloadedImage = image {
-            generator(downloadedImage)
+          guard let downloadedImage = image else {
+            onFailure()
+            return
           }
+          generator(downloadedImage)
         }
       })
+    } else {
+      onFailure()
     }
   }
 

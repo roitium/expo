@@ -8,7 +8,18 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import * as Log from '../log';
+import { WebSupportProjectPrerequisite } from '../start/doctor/web/WebSupportProjectPrerequisite';
+import { DevServerManager } from '../start/server/DevServerManager';
+import { MetroBundlerDevServer } from '../start/server/metro/MetroBundlerDevServer';
+import { getRouterDirectoryModuleIdWithManifest } from '../start/server/metro/router';
+import { serializeHtmlWithAssets } from '../start/server/metro/serializeHtml';
+import { getBaseUrlFromExpoConfig } from '../start/server/middleware/metroOptions';
+import { createTemplateHtmlFromExpoConfigAsync } from '../start/server/webTemplate';
+import { env } from '../utils/env';
+import { CommandError } from '../utils/errors';
 import { type PlatformMetadata, createMetadataJson } from './createMetadataJson';
+import { event } from './events';
 import { exportAssetsAsync } from './exportAssets';
 import {
   addDomBundleToMetadataAsync,
@@ -25,17 +36,6 @@ import type { Options } from './resolveOptions';
 import type { ExportAssetMap, BundleOutput, BundleAssetWithFileHashes } from './saveAssets';
 import { getFilesFromSerialAssets, persistMetroFilesAsync } from './saveAssets';
 import { createAssetMap } from './writeContents';
-import * as Log from '../log';
-import { WebSupportProjectPrerequisite } from '../start/doctor/web/WebSupportProjectPrerequisite';
-import { DevServerManager } from '../start/server/DevServerManager';
-import { MetroBundlerDevServer } from '../start/server/metro/MetroBundlerDevServer';
-import { getRouterDirectoryModuleIdWithManifest } from '../start/server/metro/router';
-import { serializeHtmlWithAssets } from '../start/server/metro/serializeHtml';
-import { getBaseUrlFromExpoConfig } from '../start/server/middleware/metroOptions';
-import { createTemplateHtmlFromExpoConfigAsync } from '../start/server/webTemplate';
-import { env } from '../utils/env';
-import { CommandError } from '../utils/errors';
-import { setNodeEnv, loadEnvFiles } from '../utils/nodeEnv';
 
 export async function exportAppAsync(
   projectRoot: string,
@@ -68,12 +68,6 @@ export async function exportAppAsync(
     | 'hostedNative'
   >
 ): Promise<void> {
-  // Force the environment during export and do not allow overriding it.
-  const environment = dev ? 'development' : 'production';
-  process.env.NODE_ENV = environment;
-  setNodeEnv(environment);
-  loadEnvFiles(projectRoot);
-
   const projectConfig = getConfig(projectRoot);
   const exp = await getPublicExpoManifestAsync(projectRoot, {
     // Web doesn't require validation.
@@ -113,6 +107,8 @@ export async function exportAppAsync(
   const mode = dev ? 'development' : 'production';
   const publicPath = getPublicFolderPath(projectRoot);
   const outputPath = path.resolve(projectRoot, outputDir);
+
+  const doneExport = event.span();
 
   // Write the JS bundles to disk, and get the bundle file names (this could change with async chunk loading support).
 
@@ -174,6 +170,7 @@ export async function exportAppAsync(
             files?: ExportAssetMap;
           };
 
+          const bundleStartedAt = Date.now();
           try {
             // Run metro bundler and create the JS bundles/source maps.
             bundle = await devServer.nativeExportBundleAsync(
@@ -209,6 +206,12 @@ export async function exportAppAsync(
           }
 
           bundles[platform] = bundle;
+
+          event('bundle', {
+            platform,
+            assets: bundle.assets.length,
+            ms: Date.now() - bundleStartedAt,
+          });
 
           getFilesFromSerialAssets(bundle.artifacts, {
             includeSourceMaps: sourceMaps,
@@ -401,4 +404,11 @@ export async function exportAppAsync(
 
   // Write all files at the end for unified logging.
   await persistMetroFilesAsync(files, outputPath);
+
+  doneExport('done', {
+    platforms,
+    outputDir,
+    mode: (exp.web?.output as 'static' | 'server' | 'single') ?? 'single',
+    dev: !!dev,
+  });
 }

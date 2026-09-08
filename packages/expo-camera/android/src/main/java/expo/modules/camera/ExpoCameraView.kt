@@ -11,6 +11,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.media.AudioManager
 import android.media.MediaActionSound
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.util.Size
 import android.view.OrientationEventListener
@@ -54,6 +55,7 @@ import expo.modules.camera.analyzers.toByteArray
 import expo.modules.camera.common.BarcodeScannedEvent
 import expo.modules.camera.common.CameraMountErrorEvent
 import expo.modules.camera.common.PictureSavedEvent
+import expo.modules.camera.common.RecordingProgressEvent
 import expo.modules.camera.records.BarcodeSettings
 import expo.modules.camera.records.BarcodeType
 import expo.modules.camera.records.CameraMode
@@ -78,8 +80,10 @@ import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.runtime.Runtime
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.io.File
@@ -134,7 +138,11 @@ class ExpoCameraView(
   private var previewView = PreviewView(context).apply {
     elevation = 0f
   }
-  private val scope = CoroutineScope(Dispatchers.Main)
+  private val scope = CoroutineScope(
+    Dispatchers.Main + SupervisorJob() + CoroutineExceptionHandler { _, throwable ->
+      Log.e(CameraViewModule.TAG, "Unhandled exception in camera coroutine", throwable)
+    }
+  )
   private var shouldCreateCamera = false
   private var previewPaused = false
 
@@ -238,6 +246,9 @@ class ExpoCameraView(
       (uriHash % Short.MAX_VALUE).toShort()
     }
   )
+
+  private val onRecordingProgress by EventDispatcher<RecordingProgressEvent>()
+  private var lastRecordingProgressTimestamp = 0L
 
   // Scanning-related properties
   private var shouldScanBarcodes = false
@@ -352,6 +363,7 @@ class ExpoCameraView(
       .setFileSizeLimit(options.maxFileSize.toLong())
       .setDurationLimitMillis(options.maxDuration.toLong() * 1000)
       .build()
+    val progressIntervalMs = (maxOf(0.1, options.progressUpdateInterval) * 1000).toLong()
 
     recorder?.let {
       if (!mute && ActivityCompat.checkSelfPermission(
@@ -378,6 +390,20 @@ class ExpoCameraView(
             }
             is VideoRecordEvent.Start -> {
               isRecording = true
+              lastRecordingProgressTimestamp = 0L
+            }
+            is VideoRecordEvent.Status -> {
+              val now = SystemClock.uptimeMillis()
+              if (isRecording && now - lastRecordingProgressTimestamp >= progressIntervalMs) {
+                lastRecordingProgressTimestamp = now
+                onRecordingProgress(
+                  RecordingProgressEvent(
+                    duration = event.recordingStats.recordedDurationNanos / 1_000_000_000.0,
+                    fileSize = event.recordingStats.numBytesRecorded,
+                    maxDuration = options.maxDuration.takeIf { it > 0 }?.toDouble()
+                  )
+                )
+              }
             }
             is VideoRecordEvent.Finalize -> {
               when (event.error) {
@@ -430,12 +456,25 @@ class ExpoCameraView(
     }
   }
 
-  @SuppressLint("UnsafeOptInUsageError")
   private suspend fun createCamera() {
     if (!shouldCreateCamera || previewPaused) {
       return
     }
     shouldCreateCamera = false
+    try {
+      configureAndBindCamera()
+    } catch (e: Exception) {
+      shouldCreateCamera = true
+      onMountError(
+        CameraMountErrorEvent(
+          "Camera could not be started, it may be unavailable or in use by another app: ${e.message ?: e.javaClass.simpleName}"
+        )
+      )
+    }
+  }
+
+  @SuppressLint("UnsafeOptInUsageError")
+  private suspend fun configureAndBindCamera() {
     val cameraProvider = ProcessCameraProvider.awaitInstance(context)
 
     ratio?.let {
@@ -514,20 +553,14 @@ class ExpoCameraView(
       }
     }.build()
 
-    try {
-      cameraProvider.unbindAll()
-      camera = cameraProvider.bindToLifecycle(currentActivity, cameraSelector, useCases)
-      camera?.let {
-        observeCameraState(it.cameraInfo)
-      }
-      // Set the previous zoom level after recreating the camera
-      setCameraZoom(zoom)
-      this.cameraProvider = cameraProvider
-    } catch (_: Exception) {
-      onMountError(
-        CameraMountErrorEvent("Camera component could not be rendered - is there any other instance running?")
-      )
+    cameraProvider.unbindAll()
+    camera = cameraProvider.bindToLifecycle(currentActivity, cameraSelector, useCases)
+    camera?.let {
+      observeCameraState(it.cameraInfo)
     }
+    // Set the previous zoom level after recreating the camera
+    setCameraZoom(zoom)
+    this.cameraProvider = cameraProvider
   }
 
   private fun createImageAnalyzer(): ImageAnalysis =

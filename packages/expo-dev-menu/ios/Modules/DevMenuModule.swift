@@ -10,7 +10,7 @@ open class DevMenuModule: Module {
     }
 
     OnDestroy {
-      DevMenuManager.shared.setAppContext(nil)
+      DevMenuManager.shared.clearAppContext(current: self.appContext)
       // Cleanup registered callbacks when the module is destroyed to prevent leaking into other bridges.
       if DevMenuManager.wasInitilized {
         DevMenuManager.shared.registeredCallbacks = []
@@ -28,6 +28,10 @@ open class DevMenuModule: Module {
 
     AsyncFunction("hideMenu") {
       DevMenuManager.shared.hideMenu()
+    }
+
+    AsyncFunction("setToolsButtonVisible") { (visible: Bool) in
+      DevMenuManager.shared.setShowFloatingActionButton(visible)
     }
 
     AsyncFunction("addDevMenuCallbacks") { (callbacks: [[String: Any]]) in

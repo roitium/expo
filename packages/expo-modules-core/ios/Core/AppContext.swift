@@ -252,7 +252,7 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
   public lazy var constants: EXConstantsInterface? = ConstantsProvider.shared
 
   /**
-   Provides access to the file system utilities. Can be overridden if the app should use different different directories or file permissions.
+   Provides access to the file system utilities. Can be overridden if the app should use different directories or file permissions.
    For instance, Expo Go uses sandboxed environment per project where the cache and document directories must be scoped.
    It's an optional type for historical reasons, for now let's keep it like this for backwards compatibility.
    */
@@ -435,6 +435,10 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
    onto the JS thread through them. When either is `nil`, the runtime falls back
    to a synchronous no-op scheduler — callers can detect this via
    `JavaScriptRuntime.supportsAsyncScheduling`.
+
+   `scheduler` is an opaque handle that `dispatch` understands; the factories pass
+   a handle created by `expo::createReactSchedulerHandle` that references the React
+   runtime scheduler weakly (see `EXReactSchedulerDispatch.h`).
 
    `dispatch` is a raw pointer to a C function with signature
    `void (*)(void *scheduler, int priority, void (^callback)())` — cast back
@@ -720,12 +724,14 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
    */
   @objc
   public static func modulesProvider(withName providerName: String = "ExpoModulesProvider") -> ModulesProvider {
-    // [0] When ExpoModulesCore is built as separated framework/module,
-    // we should explicitly load main bundle's `ExpoModulesProvider` class.
-    // CFBundleExecutable is tried first: it equals $(PRODUCT_NAME:c99extidentifier) and
-    // directly matches the Swift module name. CFBundleName is kept as a fallback for the
-    // uncommon case where both values are identical valid identifiers.
+    // [0] When ExpoModulesCore is built as a separate framework/module,
+    // explicitly load the main bundle's `ExpoModulesProvider` class.
+    // `ExpoModulesProviderModuleName` is an internal key that allows repack-app to
+    // preserve the original Swift module name. Try `CFBundleExecutable` next because
+    // it usually matches the Swift module name. Keep `CFBundleName` as a final fallback
+    // for cases where it is also a valid module identifier.
     let mainBundleNames = [
+      Bundle.main.infoDictionary?["ExpoModulesProviderModuleName"],
       Bundle.main.infoDictionary?["CFBundleExecutable"],
       Bundle.main.infoDictionary?["CFBundleName"]
     ].compactMap { $0 as? String }
@@ -761,18 +767,38 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
 
   internal static func moduleProviderClassNames(withName providerName: String, bundleNames: [String]) -> [String] {
     var seen = Set<String>()
-    return bundleNames.compactMap { bundleName in
+    return bundleNames.flatMap { [$0, c99ExtendedIdentifier($0)] }.compactMap { bundleName in
       let candidate = "\(bundleName).\(providerName)"
       return seen.insert(candidate).inserted ? candidate : nil
     }
+  }
+
+  /**
+   Applies the same substitution as Xcode's `:c99extidentifier` string operator, which derives the
+   default `PRODUCT_MODULE_NAME` (and thus the Swift module name) from `PRODUCT_NAME`. The bundle
+   names above are the raw product name, so the two differ whenever the product name is not a valid
+   C99 identifier — most commonly when the app's `name` starts with a digit, where a product name of
+   `123myapp` compiles into the Swift module `_23myapp`.
+   */
+  internal static func c99ExtendedIdentifier(_ name: String) -> String {
+    var characters = name.map { $0.isLetter || $0.isNumber || $0 == "_" ? $0 : "_" }
+    if let first = characters.first, first.isNumber {
+      characters[0] = "_"
+    }
+    return String(characters)
   }
 
   public func reloadAppAsync(_ reason: String = "Reload from appContext") {
     if moduleRegistry.has(moduleWithName: "ExpoGo") {
       NotificationCenter.default.post(name: NSNotification.Name(rawValue: "EXReloadActiveAppRequest"), object: nil)
     } else {
-      DispatchQueue.main.async {
-        RCTTriggerReloadCommandListeners(reason)
+      // Must run on the main thread (see #31789), but synchronously when already there — deferring
+      // via `DispatchQueue.main.async` deadlocks the bridgeless reload against TurboModule teardown.
+      let trigger = { RCTTriggerReloadCommandListeners(reason) }
+      if Thread.isMainThread {
+        trigger()
+      } else {
+        DispatchQueue.main.async(execute: trigger)
       }
     }
   }

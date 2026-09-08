@@ -21,12 +21,14 @@ appId: ${APP_ID}
 - assertVisible:
     text: 'Toggle element inspector'
     enabled: true
-- assertVisible: 'Open DevTools'
+- scrollUntilVisible:
+    element:
+      text: 'Open DevTools'
 
 # Assert that information about the app
 # is correctly loaded
 - assertVisible: 'expo-app'
-- assertVisible: 'Runtime version: exposdk:56.0.0'
+- assertVisible: 'Runtime version: ${RUNTIME_VERSION}'
 
 - scrollUntilVisible:
     element:
@@ -36,7 +38,7 @@ appId: ${APP_ID}
 - assertVisible: '1.0.0'
 
 - assertVisible: 'Runtime version'
-- assertVisible: 'exposdk:56.0.0'
+- assertVisible: '${RUNTIME_VERSION}'
 
 - runFlow:
     when:

@@ -1,5 +1,6 @@
 // Copyright 2025-present 650 Industries. All rights reserved.
 
+import EASClient
 import ExpoAppMetrics
 import ExpoModulesCore
 
@@ -10,6 +11,7 @@ internal struct Config: Record {
   @Field var dispatchingEnabled: Bool?
   @Field var dispatchInDebug: Bool?
   @Field var sampleRate: Double?
+  @Field var integrations: [String: Any]?
 }
 
 internal struct BundleDefaults: Record {
@@ -18,8 +20,12 @@ internal struct BundleDefaults: Record {
 }
 
 public final class ObserveModule: Module {
+  private var lastIntegrations: [String: Any] = [:]
+
   public func definition() -> ModuleDefinition {
     Name("ExpoObserve")
+
+    Events("configure")
 
     OnCreate {
       // The observability manager needs to know the project id. Currently it's available only through `expo-constants`,
@@ -28,6 +34,10 @@ public final class ObserveModule: Module {
         let baseUrl = getBaseUrl(manifest)
         ObservabilityManager.setEndpointUrl(baseUrl, projectId: projectId)
       }
+    }
+
+    Constant("clientId") {
+      EASClientID.uuid().uuidString.lowercased()
     }
 
     AsyncFunction("dispatchEvents") {
@@ -49,6 +59,14 @@ public final class ObserveModule: Module {
           AppMetrics.setEnvironment(resolvedEnvironment)
         }
       }
+
+      // Broadcast the integrations config so integration libraries (e.g. expo-image) can activate.
+      self.lastIntegrations = config.integrations ?? [:]
+      self.emit(event: "configure", payload: ["integrations": self.lastIntegrations])
+    }
+
+    Function("getIntegrations") {
+      return self.lastIntegrations
     }
 
     Function("setBundleDefaults") { (defaults: BundleDefaults) in

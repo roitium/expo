@@ -1,5 +1,4 @@
-import { createPermissionHook, PermissionStatus } from 'expo';
-import { Platform, UnavailabilityError } from 'expo-modules-core';
+import { createPermissionHook, PermissionStatus, Platform, UnavailabilityError } from 'expo';
 
 import type { PermissionResponse, CellularGeneration } from './Cellular.types';
 import ExpoCellular from './ExpoCellular';
@@ -16,8 +15,8 @@ export { CellularGeneration } from './Cellular.types';
  *
  * On web, this method uses [`navigator.connection.effectiveType`](https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation/effectiveType)
  * to detect the effective type of the connection using a combination of recently observed
- * round-trip time and downlink values. See [here](https://developer.mozilla.org/en-US/docs/Web/API/Network_Information_API)
- * to view browser compatibility.
+ * round-trip time and downlink values. See the [Network Information API](https://developer.mozilla.org/en-US/docs/Web/API/Network_Information_API)
+ * documentation for browser compatibility.
  *
  * @example
  * ```ts

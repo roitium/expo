@@ -17,7 +17,8 @@ struct SettingsTabView: View {
       "runtimeVersion": viewModel.buildInfo["runtimeVersion"] as? String ?? "",
       "sdkVersion": viewModel.structuredBuildInfo.sdkVersion ?? "",
       "appName": viewModel.buildInfo["appName"] as? String ?? "",
-      "appVersion": viewModel.buildInfo["appVersion"] as? String ?? ""
+      "appVersion": viewModel.buildInfo["appVersion"] as? String ?? "",
+      "appExpirationDate": viewModel.buildInfo["appExpirationDate"] as? String ?? ""
     ]
 
     do {
@@ -40,23 +41,13 @@ struct SettingsTabView: View {
           .font(.system(size: 13))
           .foregroundStyle(.secondary)
 
+        DevServerFiltersView()
+
         #if !targetEnvironment(simulator)
         localNetworkDebugSettings
         #endif
 
-        VStack(alignment: .leading, spacing: 8) {
-          Text("system".uppercased())
-            .font(.caption)
-            .foregroundColor(.primary.opacity(0.6))
-
-          VStack(spacing: 0) {
-            version
-            Divider()
-            copyToClipboardButton
-          }
-          .background(Color.expoSecondarySystemBackground)
-          .cornerRadius(12)
-        }
+        systemSection
 
         if isAdminUser {
           debugSettings
@@ -76,7 +67,7 @@ struct SettingsTabView: View {
     .task {
       viewModel.refreshPermissionStatus()
     }
-    .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+    .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
       viewModel.refreshPermissionStatus()
     }
     #endif
@@ -159,11 +150,42 @@ struct SettingsTabView: View {
     }
   }
 
+  private var systemSection: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text("system".uppercased())
+        .font(.caption)
+        .foregroundColor(.primary.opacity(0.6))
+
+      VStack(spacing: 0) {
+        version
+        if let expiration = viewModel.buildInfo["appExpirationDate"] as? String {
+          Divider()
+          expirationRow(expiration)
+        }
+        Divider()
+        copyToClipboardButton
+      }
+      .background(Color.expoSecondarySystemBackground)
+      .cornerRadius(12)
+    }
+  }
+
   private var version: some View {
     HStack {
       Text("Version")
       Spacer()
       Text(viewModel.buildInfo["appVersion"] as? String ?? "")
+        .foregroundColor(.secondary)
+    }
+    .padding(.horizontal)
+    .padding(.vertical, 12)
+  }
+
+  private func expirationRow(_ text: String) -> some View {
+    HStack {
+      Text("Expires in")
+      Spacer()
+      Text(text)
         .foregroundColor(.secondary)
     }
     .padding(.horizontal)
@@ -307,6 +329,8 @@ struct SettingsTabView: View {
       return ("Allowed", "checkmark.circle.fill", .green)
     case .denied:
       return ("Not allowed", "xmark.circle.fill", .red)
+    case .misconfigured:
+      return ("Not configured", "exclamationmark.triangle.fill", .orange)
     case .checking, .unknown:
       return nil
     }

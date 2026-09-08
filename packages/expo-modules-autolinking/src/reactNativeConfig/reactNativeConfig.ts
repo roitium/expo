@@ -1,6 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 
+import type { ExpoModuleConfig } from '../ExpoModuleConfig';
+import { discoverExpoModuleConfigAsync } from '../ExpoModuleConfig';
+import type { AutolinkingOptions } from '../commands/autolinkingOptions';
+import type { DependencyResolution } from '../dependencies';
+import {
+  filterMapResolutionResult,
+  mergeResolutionResults,
+  scanDependenciesFromRNProjectConfig,
+  scanDependenciesInSearchPath,
+  scanDependenciesRecursively,
+} from '../dependencies';
+import { getSupportPackageForPlatform } from '../platforms';
 import type { SupportedPlatform } from '../types';
 import {
   findGradleAndManifestAsync,
@@ -19,23 +31,12 @@ import type {
   RNConfigReactNativeProjectConfig,
   RNConfigResult,
 } from './reactNativeConfig.types';
-import type { ExpoModuleConfig } from '../ExpoModuleConfig';
-import { discoverExpoModuleConfigAsync } from '../ExpoModuleConfig';
-import type { AutolinkingOptions } from '../commands/autolinkingOptions';
-import type { DependencyResolution } from '../dependencies';
-import {
-  filterMapResolutionResult,
-  mergeResolutionResults,
-  scanDependenciesFromRNProjectConfig,
-  scanDependenciesInSearchPath,
-  scanDependenciesRecursively,
-} from '../dependencies';
 import { checkDependencyWebAsync } from './webResolver';
-import { getSupportPackageForPlatform } from '../platforms';
 
 const deepObjectMerge = (target: any, source: any): any => {
   if (
     source !== undefined &&
+    source !== null &&
     typeof target === 'object' &&
     target != null &&
     !Array.isArray(target) &&
@@ -237,9 +238,19 @@ export async function createReactNativeConfigAsync({
   return {
     root: appRoot,
     reactNativePath,
-    dependencies,
+    dependencies: sortDependenciesByName(dependencies),
     project: await resolveAppProjectConfigAsync(appRoot, autolinkingOptions.platform, sourceDir),
   };
+}
+
+function sortDependenciesByName(
+  dependencies: Record<string, RNConfigDependency>
+): Record<string, RNConfigDependency> {
+  const sortedDependencies: Record<string, RNConfigDependency> = {};
+  for (const name of Object.keys(dependencies).sort()) {
+    sortedDependencies[name] = dependencies[name]!;
+  }
+  return sortedDependencies;
 }
 
 function resolveAppleProjectSourceDir(projectRoot: string, platform: string): string {

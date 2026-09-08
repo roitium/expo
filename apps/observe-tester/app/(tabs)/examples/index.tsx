@@ -14,6 +14,11 @@ export default function ExamplesIndex() {
       contentContainerStyle={styles.content}>
       <ObserveInteractiveMarker />
       <Button
+        title="Expo Image"
+        description="Oversized-image reporting: correctly sized vs too big"
+        onPress={() => router.push('/examples/expo-image')}
+      />
+      <Button
         title="Nested stack"
         description="Network, heavy renders, params, nested modal"
         onPress={() => router.push('/examples/nested-stack')}
@@ -27,6 +32,11 @@ export default function ExamplesIndex() {
         title="Modals"
         description="modal / formSheet / pageSheet presentations"
         onPress={() => router.push('/examples/modals')}
+      />
+      <Button
+        title="Event flood"
+        description="Generate high-volume log events"
+        onPress={() => router.push('/examples/event-flood')}
       />
     </ScrollView>
   );

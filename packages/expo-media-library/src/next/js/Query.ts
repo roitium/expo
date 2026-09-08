@@ -1,6 +1,6 @@
-import { Asset, type Album } from './AssetAlbum';
 import { NativeAlbum, NativeQuery } from '../native';
 import type { AssetField, AssetFieldValueMap, AssetMetadata, SortDescriptor } from '../types';
+import { Asset, type Album } from './AssetAlbum';
 
 /**
  * Represents a query to fetch data from the media library.
@@ -146,7 +146,7 @@ export class Query {
    * Returns fields that can be read cheaply from the media store, without resolving file paths or
    * decoding files.
    *
-   * @returns A promise that resolves to an array of [`AssetMetadata`](#assetmetadata) objects that match the query criteria.
+   * @returns A promise that resolves to an array of `AssetMetadata` objects that match the query criteria.
    *
    * @example
    * ```ts

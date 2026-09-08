@@ -1,8 +1,8 @@
 import tty from 'node:tty';
 import { toQR } from 'toqr';
 
-import { env } from './env';
 import * as Log from '../log';
+import { env } from './env';
 
 export interface QROutput {
   lines: number;
@@ -30,10 +30,8 @@ function supportsSextants() {
   }
   const isGhostty = process.env.TERM_PROGRAM === 'ghostty';
   const isWezterm = process.env.TERM_PROGRAM === 'WezTerm';
-  // NOTE(@kitten): Zed regressed on rendering sextants
-  const isZed = process.env.TERM_PROGRAM === 'zed';
   const isKitty = !!process.env.KITTY_WINDOW_ID?.length;
-  const isAlacritty = !!process.env.ALACRITTY_WINDOW_ID?.length && !isZed;
+  const isAlacritty = !!process.env.ALACRITTY_WINDOW_ID?.length;
   return isGhostty || isWezterm || isKitty || isAlacritty;
 }
 

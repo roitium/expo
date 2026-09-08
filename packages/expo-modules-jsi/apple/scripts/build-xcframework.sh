@@ -196,6 +196,14 @@ build_slice() {
   # SYMROOT/OBJROOT to the paths this script reads from forces products and the
   # generated module maps back into DERIVED_DATA_PATH. On Xcode versions that
   # honor -derivedDataPath these point at the same locations, so it's a no-op.
+  #
+  # Xcode turns coverage mapping on for auto-generated SwiftPM schemes, and that leaks into a
+  # plain `build` of a Release configuration: swiftc gets `-profile-generate
+  # -profile-coverage-mapping` and clang gets `-fprofile-instr-generate`. The result is a counter
+  # increment in every function and branch region of the shipped framework (visible as
+  # `___profc_*` symbols and `__llvm_prf_*` sections) plus ~40% extra binary size. Setting
+  # CLANG_COVERAGE_MAPPING=NO is what removes the flags; CLANG_ENABLE_CODE_COVERAGE=NO alone
+  # does not, and `-enableCodeCoverage NO` is rejected outside of `test`.
   (cd "$PACKAGE_DIR" && env -i PATH="$PATH" HOME="$HOME" PODS_ROOT="$PODS_ROOT" RN_ROOT="$RN_ROOT" \
     xcodebuild \
     build \
@@ -216,6 +224,8 @@ build_slice() {
     DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
     COMPILER_INDEX_STORE_ENABLE=NO \
     SWIFT_COMPILATION_MODE=wholemodule \
+    CLANG_ENABLE_CODE_COVERAGE=NO \
+    CLANG_COVERAGE_MAPPING=NO \
   )
 
   local product_path="${BUILD_PRODUCTS_PATH}/${build_dir_name}"
@@ -400,7 +410,7 @@ GENERATED_MODULE_MAP="${PACKAGE_DIR}/.generated/module.modulemap"
 SOURCE_FILES+=("$GENERATED_MODULE_MAP")
 
 if [[ "$CLEAN" == true ]]; then
-  rm -rf "$XCFRAMEWORK_PATH" "$DERIVED_DATA_PATH" "$SPM_BUILD_PATH" "$SPM_WORKSPACE_PATH"
+  clean_xcframework_state "$PACKAGE_DIR"
   log "Cleaned existing xcframework, DerivedData, and SwiftPM state"
   # Re-stamp stub slices so the post-clean state matches a fresh `pod install`:
   # CocoaPods reads Info.plist before this script runs, and would fail to
@@ -448,7 +458,7 @@ PLATFORMS=("${platforms_to_build[@]}")
 # generated modulemap is left intact — it was already regenerated above for the
 # cache hash, so wiping it here would just force a redundant rebuild.
 log "Clearing stale build state (DerivedData, SwiftPM) before rebuild"
-rm -rf "$DERIVED_DATA_PATH" "$SPM_BUILD_PATH" "$SPM_WORKSPACE_PATH"
+safe_remove_dirs "$DERIVED_DATA_PATH" "$SPM_BUILD_PATH" "$SPM_WORKSPACE_PATH"
 
 SECONDS=0
 

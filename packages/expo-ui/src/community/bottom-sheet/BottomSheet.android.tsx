@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { Host } from '../../jetpack-compose/Host';
+import { ModalBottomSheet, type ModalBottomSheetRef } from '../../jetpack-compose/ModalBottomSheet';
+import { RNHostView } from '../../jetpack-compose/RNHostView';
 import { BottomSheetContext, BottomSheetInternalContext } from './context';
 import { SheetScrollContextReset } from './scrollContextReset';
 import type { BottomSheetMethods, BottomSheetProps } from './types';
 import { parseSnapPoint } from './types';
-import { Host } from '../../jetpack-compose/Host';
-import { ModalBottomSheet, type ModalBottomSheetRef } from '../../jetpack-compose/ModalBottomSheet';
-import { RNHostView } from '../../jetpack-compose/RNHostView';
 
 export { useBottomSheet } from './context';
 
@@ -200,7 +200,11 @@ export function BottomSheet(props: BottomSheetProps) {
               shouldDismissOnClickOutside: enablePanDownToClose,
             }}>
             <RNHostView matchContents={fitToContents}>
-              <View style={fitToContents ? undefined : { flex: 1 }}>
+              {/* With matchContents, RNHostView lays the hosted view out at its own size, so `width` gives it
+                  the sheet width while its height stays content-sized. Otherwise flexGrow:1 + height:0
+                  (flex-basis 0) fills RNHostView's measured height without inheriting the scrollable
+                  child's content height, which would block scrolling to the end. */}
+              <View style={fitToContents ? { width } : { flexGrow: 1, height: 0 }}>
                 <SheetScrollContextReset>{children}</SheetScrollContextReset>
               </View>
             </RNHostView>

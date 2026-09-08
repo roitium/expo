@@ -2,8 +2,6 @@ import { loadModule } from '@expo/require-utils';
 import type { IncomingMessage } from 'node:http';
 import { type WebSocket, WebSocketServer } from 'ws';
 
-const debug = require('debug')('expo:start:server:devtools') as typeof console.log;
-
 /**
  * Handler default-exported by a plugin's `serverEntryPoint`. Receives a fetch API `Request`
  * with the plugin endpoint prefix stripped from the URL. Returning `null`/`undefined` falls
@@ -21,9 +19,26 @@ export type DevToolsPluginRequestHandler = (
  */
 export type DevToolsPluginWebSocketHandler = (
   socket: WebSocket,
-  request: IncomingMessage,
+  request: Request,
   server: WebSocketServer
 ) => void;
+
+function convertUpgradeRequest(request: IncomingMessage, route: string): Request {
+  const proto = 'encrypted' in request.socket && !!request.socket.encrypted ? 'https' : 'http';
+  const origin = `${proto}://${request.headers.host}`;
+  const url = new URL(request.url ?? '/', origin);
+  url.pathname = route;
+  const headers = new Headers();
+  const { rawHeaders } = request;
+  for (let index = 0; index < rawHeaders.length; index += 2) {
+    const name = rawHeaders[index];
+    const value = rawHeaders[index + 1];
+    if (name != null && value != null) {
+      headers.append(name, value);
+    }
+  }
+  return new Request(url.href, { method: request.method, headers });
+}
 
 export async function loadRequestHandlerAsync({
   packageName,
@@ -32,7 +47,6 @@ export async function loadRequestHandlerAsync({
   packageName: string;
   serverEntryPoint: string;
 }): Promise<DevToolsPluginRequestHandler> {
-  debug('Loading DevTools plugin server module: %s', serverEntryPoint);
   const serverModule = (await loadModule(serverEntryPoint)) as
     | DevToolsPluginRequestHandler
     | { default?: DevToolsPluginRequestHandler };
@@ -55,7 +69,6 @@ export async function loadWebSocketServerAsync({
   packageName: string;
   serverEntryPoint: string;
 }): Promise<Record<string, WebSocketServer>> {
-  debug('Loading DevTools plugin WebSocket server module: %s', serverEntryPoint);
   const serverModule = (await loadModule(serverEntryPoint)) as {
     webSocketHandlers?: Record<string, DevToolsPluginWebSocketHandler>;
   };
@@ -70,10 +83,13 @@ export async function loadWebSocketServerAsync({
             `must be a function (socket, request, server) => void.`
         );
       }
-      const server = new WebSocketServer({ noServer: true });
-      server.on('connection', (socket, request) => handler(socket, request, server));
       // Routes are mounted relative to the plugin endpoint, so they must be absolute.
-      return [route.startsWith('/') ? route : `/${route}`, server];
+      const normalizedRoute = route.startsWith('/') ? route : `/${route}`;
+      const server = new WebSocketServer({ noServer: true });
+      server.on('connection', (socket, request) =>
+        handler(socket, convertUpgradeRequest(request, normalizedRoute), server)
+      );
+      return [normalizedRoute, server];
     })
   );
 }

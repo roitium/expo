@@ -1,6 +1,5 @@
 import { ThemeProvider } from '@expo/styleguide';
 import { CookieConsentProvider } from '@expo/styleguide-cookie-consent';
-import { KapaProvider } from '@kapaai/react-sdk';
 import { MDXProvider } from '@mdx-js/react';
 import * as Sentry from '@sentry/react';
 import { MotionConfig } from 'framer-motion';
@@ -17,17 +16,19 @@ import { websiteSchema } from '~/constants/structured-data';
 import { useAnalyticsPageTracking } from '~/providers/Analytics';
 import { CodeBlockSettingsProvider } from '~/providers/CodeBlockSettingsProvider';
 import { TutorialChapterCompletionProvider } from '~/providers/TutorialChapterCompletionProvider';
+import { ApiDataProvider } from '~/providers/api-data';
 import { HreflangAlternates } from '~/ui/components/HreflangAlternates';
 import { markdownComponents } from '~/ui/components/Markdown';
+import { CodeSelectionCopy } from '~/ui/components/Snippet/CodeSelectionCopy';
 import { StructuredData } from '~/ui/components/StructuredData';
 import * as Tooltip from '~/ui/components/Tooltip';
 import '~/common/suppress-trailing-slash-warning';
-import '~/styles/global.css';
 import '@expo/styleguide/dist/expo-theme.css';
 import '@expo/styleguide-search-ui/dist/expo-search-ui.css';
 
+import '~/styles/global.css';
+
 const isDev = process.env.NODE_ENV === 'development';
-const KAPA_INTEGRATION_ID = '2063233f-1e70-45e8-b1b5-a872c9887afc';
 
 export const regularFont = Inter({
   display: 'swap',
@@ -100,9 +101,10 @@ export default function App({ Component, pageProps }: AppProps) {
                 <CodeBlockSettingsProvider>
                   <MDXProvider components={rootMarkdownComponents}>
                     <Tooltip.Provider>
-                      <KapaProvider integrationId={KAPA_INTEGRATION_ID} callbacks={{}}>
+                      <ApiDataProvider data={pageProps.apiSectionData}>
                         <Component {...pageProps} />
-                      </KapaProvider>
+                      </ApiDataProvider>
+                      <CodeSelectionCopy />
                     </Tooltip.Provider>
                   </MDXProvider>
                 </CodeBlockSettingsProvider>

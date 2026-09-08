@@ -1,10 +1,15 @@
-import { PermissionStatus, type PermissionResponse } from 'expo';
-import { type EventSubscription, UnavailabilityError } from 'expo-modules-core';
+import {
+  PermissionStatus,
+  type PermissionResponse,
+  type EventSubscription,
+  UnavailabilityError,
+} from 'expo';
 
 import type {
   AssetField,
   AssetFieldValueMap,
   AssetMetadata,
+  AssetUriOptions,
   GranularPermission,
   MediaTypeFilter,
   MediaLibraryAssetsChangeEvent,
@@ -66,7 +71,7 @@ class NativeAssetWeb implements NativeAssetClass {
   getShape() {
     return unavailable('Asset.getShape');
   }
-  getUri() {
+  getUri(_options?: AssetUriOptions) {
     return unavailable('Asset.getUri');
   }
   getWidth() {

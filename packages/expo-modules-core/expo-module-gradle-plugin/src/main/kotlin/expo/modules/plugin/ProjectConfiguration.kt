@@ -40,6 +40,10 @@ internal fun Project.applyPikaPlugin() {
   pika.introspectableAnnotation("expo.modules.kotlin.views.OptimizedComposeProps")
 }
 
+internal fun Project.applyExpoModulesV2Plugin() {
+  applyPluginIfNeeded("io.github.expo.modules.v2")
+}
+
 private fun Project.applyPluginIfNeeded(id: String) {
   if (!plugins.hasPlugin(id)) {
     plugins.apply(id)
@@ -85,7 +89,7 @@ internal fun Project.applyDefaultAndroidSdkVersions() {
 
 /**
  * Applies the necessary configuration for publishing to the local Maven repository.
- * It need to be called when DSL is finalized.
+ * It needs to be called when DSL is finalized.
  */
 internal fun Project.applyPublishing(expoModulesExtension: ExpoModuleExtension) {
   if (!expoModulesExtension.canBePublished) {

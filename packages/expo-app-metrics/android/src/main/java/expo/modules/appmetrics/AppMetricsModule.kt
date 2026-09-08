@@ -16,8 +16,10 @@ import expo.modules.appmetrics.networkrequests.NetworkRequestFilter
 import expo.modules.appmetrics.networkrequests.NetworkRequestObserver
 import expo.modules.appmetrics.logevents.Severity
 import expo.modules.appmetrics.logevents.sanitizeLogEventAttributes
+import expo.modules.appmetrics.logevents.validateDisplayName
 import expo.modules.appmetrics.logevents.validateEventBody
 import expo.modules.appmetrics.logevents.validateEventName
+import expo.modules.appmetrics.logevents.withDisplayNameAttribute
 import expo.modules.appmetrics.memory.MemoryMetricsManager
 import expo.modules.appmetrics.storage.JsDebugSession
 import expo.modules.appmetrics.storage.JsLogRecord
@@ -90,6 +92,10 @@ class AppMetricsModule : Module(), UpdatesStateChangeListener {
         val validatedName = validateEventName(name) ?: return@Function
         val validatedBody = validateEventBody(options?.body)
         val sanitized = sanitizeLogEventAttributes(options?.attributes)
+        val attributes = withDisplayNameAttribute(
+          sanitized.attributes,
+          validateDisplayName(options?.displayName)
+        )
         val severity = options?.severity ?: Severity.INFO
 
         scope.launch {
@@ -109,7 +115,7 @@ class AppMetricsModule : Module(), UpdatesStateChangeListener {
                 name = validatedName,
                 body = validatedBody,
                 severity = severity.rawValue,
-                attributes = sanitized.attributes?.let { JsonAny.encodeMapToJsonString(it) },
+                attributes = attributes?.let { JsonAny.encodeMapToJsonString(it) },
                 droppedAttributesCount = sanitized.droppedCount
               )
             )
@@ -162,13 +168,14 @@ class AppMetricsModule : Module(), UpdatesStateChangeListener {
             exitInfoProvider = ExitInfoProviderImpl(context),
             lastProcessedExitStore = PreferencesLastProcessedExitStore(context),
             appVersion = metadata?.appVersion
-          ) { sessionId, origin, report ->
+          ) { sessionId, origin, report, logDetails ->
             attributeAndStoreCrashReport(
               sessionManager = sessionManager,
               currentSessionId = mainSession.sessionId,
               sessionId = sessionId,
               origin = origin,
-              report = report
+              report = report,
+              logDetails = logDetails
             )
           }.process()
         }

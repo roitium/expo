@@ -2,6 +2,18 @@ import SwiftUI
 import WidgetKit
 import Foundation
 
+public struct WidgetConfigurationOption {
+  public let name: String
+  public let value: String
+  public let subtitle: String?
+
+  public init(name: String, value: String, subtitle: String? = nil) {
+    self.name = name
+    self.value = value
+    self.subtitle = subtitle
+  }
+}
+
 func parseTimeline(identifier: String, name: String, family: WidgetFamily) -> [WidgetsTimelineEntry] {
   guard let timeline = WidgetsStorage.getArray(forKey: "__expo_widgets_\(name)_timeline") else {
     return [WidgetsTimelineEntry(date: Date(), name: name, props: WidgetsLayoutRegistry.initialProps(for: name), entryIndex: nil)]
@@ -20,6 +32,26 @@ func parseTimeline(identifier: String, name: String, family: WidgetFamily) -> [W
   }
 
   return entries.compactMap(\.self)
+}
+
+public func widgetConfigurationOptions(
+  name: String,
+  parameter: String,
+  fallback: [WidgetConfigurationOption]
+) -> [WidgetConfigurationOption] {
+  guard let options = WidgetsStorage.getArray(forKey: "__expo_widgets_\(name)_configuration_options_\(parameter)") else {
+    return fallback
+  }
+
+  let parsedOptions: [WidgetConfigurationOption] = options.compactMap { option in
+    guard let option = option as? [String: Any],
+          let name = option["name"] as? String,
+          let value = option["value"] as? String else {
+      return nil
+    }
+    return WidgetConfigurationOption(name: name, value: value, subtitle: option["subtitle"] as? String)
+  }
+  return parsedOptions.isEmpty ? fallback : parsedOptions
 }
 
 public func createRedBox(message: String, stack: String? = nil) -> [String: Any] {
@@ -61,25 +93,16 @@ func getLiveActivityNodes(forName name: String, props: String? = nil, environmen
   }
 }
 
-func getLiveActivityUrl(forName name: String) -> URL? {
-  guard let urlString = WidgetsStorage.getString(forKey: "__expo_widgets_live_activity_\(name)_url") else {
-    return nil
-  }
-  return URL(string: urlString)
-}
-
 public func getWidgetEnvironment(environment: EnvironmentValues) -> [String: Any] {
   var env: [String: Any] = [
     "showsContainerBackground": environment.showsWidgetContainerBackground,
     "widgetFamily": environment.widgetFamily.description,
-    "colorScheme": "\(environment.colorScheme)"
+    "colorScheme": "\(environment.colorScheme)",
+    "isLuminanceReduced": environment.isLuminanceReduced,
+    "widgetRenderingMode": environment.widgetRenderingMode.description,
+    "showsWidgetLabel": environment.showsWidgetLabel
   ]
 
-  if #available(iOS 16.0, *) {
-    env["isLuminanceReduced"] = environment.isLuminanceReduced
-    env["widgetRenderingMode"] = environment.widgetRenderingMode.description
-    env["showsWidgetLabel"] = environment.showsWidgetLabel
-  }
   if #available(iOS 17.0, *) {
     env["widgetContentMargins"] = [
       "top": environment.widgetContentMargins.top,
@@ -94,17 +117,14 @@ public func getWidgetEnvironment(environment: EnvironmentValues) -> [String: Any
   return env
 }
 
-func getLiveActivityEnvironment(environment: EnvironmentValues) -> [String: Any] {
+func getLiveActivityEnvironment(for environment: EnvironmentValues, in context: ActivityViewContext<LiveActivityAttributes>) -> [String: Any] {
   var env: [String: Any] = [
-    "colorScheme": "\(environment.colorScheme)"
+    "colorScheme": "\(environment.colorScheme)",
+    "isLuminanceReduced": environment.isLuminanceReduced,
+    "isActivityFullscreen": environment.isActivityFullscreen,
+    "isStale": context.isStale
   ]
 
-  if #available(iOS 16.0, *) {
-    env["isLuminanceReduced"] = environment.isLuminanceReduced
-  }
-  if #available(iOS 16.1, *) {
-    env["isActivityFullscreen"] = environment.isActivityFullscreen
-  }
   if #available(iOS 18.0, *) {
     env["isActivityUpdateReduced"] = environment.isActivityUpdateReduced
     env["activityFamily"] = "\(environment.activityFamily)"

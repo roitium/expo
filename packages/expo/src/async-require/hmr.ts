@@ -11,15 +11,16 @@
 import MetroHMRClient from '@expo/metro/metro-runtime/modules/HMRClient';
 import prettyFormat, { plugins } from 'pretty-format';
 
+import type { MarshalledProps } from '../dom/dom-entry';
 import {
   getConnectionError,
   getFullBundlerUrl,
   handleCompileError,
   hideLoading,
+  reload,
   resetErrorOverlay,
   showLoading,
 } from './hmrUtils';
-import type { MarshalledProps } from '../dom/dom-entry';
 
 declare global {
   interface Window {
@@ -55,7 +56,7 @@ function assert(foo: any, msg: string): asserts foo {
 
 /**
  * HMR Client that receives from the server HMR updates and propagates them
- * runtime to reflects those changes.
+ * to runtime to reflect those changes.
  */
 const HMRClient = {
   enable() {
@@ -324,7 +325,7 @@ function setHMRUnavailableReason(reason: string) {
 function registerBundleEntryPoints(client: MetroHMRClient | null) {
   if (hmrUnavailableReason != null) {
     // "Bundle Splitting – Metro disconnected"
-    window.location.reload();
+    reload();
     return;
   }
 

@@ -9,6 +9,8 @@ const projectRoot = getRouterE2ERoot();
 const pluginPath = '/_expo/plugins/devtools-e2e';
 
 test.describe('devtools-e2e', () => {
+  test.describe.configure({ mode: 'serial' });
+
   const expoStart = createExpoStart({
     cwd: projectRoot,
     env: {
@@ -19,7 +21,7 @@ test.describe('devtools-e2e', () => {
   });
   let output: ReturnType<typeof processCollectOutput>;
 
-  test.beforeEach(async () => {
+  test.beforeAll(async () => {
     const startPromise = expoStart.startAsync();
 
     await expect
@@ -37,7 +39,7 @@ test.describe('devtools-e2e', () => {
     await startPromise;
   });
 
-  test.afterEach(async () => {
+  test.afterAll(async () => {
     await expoStart.stopAsync(true);
   });
 
@@ -47,9 +49,7 @@ test.describe('devtools-e2e', () => {
       .toContain('Banner E2E');
 
     const terminalOutput = stripVTControlCharacters(output.all);
-    const pluginUrl = terminalOutput.match(
-      /(http:\/\/\S+\/_expo\/plugins\/devtools-e2e)/
-    )?.[1];
+    const pluginUrl = terminalOutput.match(/(http:\/\/\S+\/_expo\/plugins\/devtools-e2e)/)?.[1];
 
     expect(pluginUrl).toBeDefined();
     expect(new URL(pluginUrl!).pathname).toBe(pluginPath);
@@ -78,7 +78,7 @@ test.describe('devtools-e2e', () => {
     await page.getByRole('button', { name: 'Open WebSocket' }).click();
 
     await expect(page.locator('#socket-log')).toContainText(
-      'message: {"type":"welcome","message":"Connected to the Hello World plugin server."}'
+      'message: {"type":"welcome","message":"Connected to the Hello World plugin server.","pathname":"/ws","search":"?source=webpage"}'
     );
     await expect(page.locator('#socket-log')).toContainText(
       'message: {"type":"echo","message":"Hello from the webpage!"}'

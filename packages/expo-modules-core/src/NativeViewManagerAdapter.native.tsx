@@ -60,7 +60,7 @@ function requireNativeComponent<Props>(
 
     if (!expoViewConfig) {
       console.warn(
-        'Unable to get the view config for %s from module &s',
+        'Unable to get the view config for %s from module %s',
         viewName ?? 'default view',
         moduleName
       );
@@ -148,6 +148,13 @@ export function requireNativeViewManager<P>(
 
     componentDidMount(): void {
       this.nativeTag = findNodeHandle(this.nativeRef.current);
+    }
+
+    /**
+     * The underlying host component
+     */
+    getNativeRef(): (Component & ReactNativeElement) | null {
+      return this.nativeRef.current;
     }
 
     render() {

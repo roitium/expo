@@ -42,11 +42,15 @@ public final class AppMetricsModule: Module, UpdatesStateChangeListener {
       }
       let validatedBody = validateEventBody(options?.body)
       let sanitized = sanitizeLogEventAttributes(options?.attributes)
+      let attributes = withDisplayNameAttribute(
+        sanitized.attributes,
+        displayName: validateDisplayName(options?.displayName)
+      )
       // Globals merge happens in `LogRow.from` so every persistence path picks them up.
       let record = LogRecord(
         name: validatedName,
         body: validatedBody,
-        attributes: sanitized.attributes,
+        attributes: attributes,
         droppedAttributesCount: sanitized.droppedCount,
         severity: options?.severity ?? .info
       )
@@ -163,6 +167,14 @@ public final class AppMetricsModule: Module, UpdatesStateChangeListener {
   }
 
   public func updatesStateDidChange(_ event: [String: Any]) {
+    // `OnCreate` can run before `EnabledAppController.start()` assigns its startup procedure, in
+    // which case the launched update reads as nil and `AppInfo` keeps the embedded build's
+    // attribution for the rest of the session. Retry here: by the time any state change arrives
+    // the launched update is known, and the patch no-ops once an id has been recorded.
+    AppMetricsActor.isolated {
+      AppMetrics.mainSession.updatesMonitor.patchAppInfoIfNeeded()
+    }
+
     if UpdatesStateEvent.fromDict(event)?.type ?? .restart == .downloadCompleteWithUpdate,
       let metric = AppMetrics.mainSession.updatesMonitor.downloadTimeMetric(subscription)
     {
